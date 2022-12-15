@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd http://www.mulesoft.org/schema/mule/munit-tools http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd ">
+    <munit:config name="customer-api-apikit-test.xml" />
+    <http:request-config name="HTTP_Request_Configuration" basePath="/api">
+        <http:request-connection host="localhost" port="8081" />
+    </http:request-config>
+    <munit:test name="get:\customers\(customerId):customer-api-config-200-application\json-FlowTest" description="Verifying functionality of [get:\customers\(customerId):customer-api-config-200-application\json]">
+        <munit:enable-flow-sources>
+            <munit:enable-flow-source value="customer-api-main" />
+            <munit:enable-flow-source value="get:\customers\(customerId):customer-api-config" />
+        </munit:enable-flow-sources>
+        <munit:behavior>
+            <set-variable variableName="customerId" value="#['4d4de7d6-7f5e-4778-9c70-babba6c25c55']" doc:name="customerId" />
+			<munit-tools:mock-when doc:name="Get Customer from Salesforce" doc:id="27fafe85-9c8c-47fa-82c4-e575f01295c6" processor="salesforce:query">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="Get Customer" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="44e57996-d0d6-4695-83ea-f42402511122" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value='#[[{"firstName":" Ulrich","lastName":"Nielsen","companyName":"E-ffoc","email":"ulrichN@effoc.com","phone":"+494341927420"}]]' mediaType="application/java" encoding="UTF-8" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+			<munit-tools:mock-when doc:name="Get Customer from Cosmos DB" doc:id="692ee59e-20de-4bdf-a993-067dc2078553" processor="azure-cosmos-db-connector-mule-4:get-document">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="Get Customer" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="6d6ac2d8-fe6b-48c4-b2df-8a6e1bcb00ac" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value='#[{"personalInformation":{"firstName":"Ulrich","lastName":"Nielsen","companyName":"E-ffoc","email":"ulrichN@effoc.com","phone":"+494341927420"},"address":[{"street":"Steinbrueckstrasse","houseNumber":114,"city":"Nuremberg","country":"Germany","postalCode":90408}]}]' mediaType="application/java" encoding="UTF-8" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+        </munit:behavior>
+        <munit:execution>
+            <http:request config-ref="HTTP_Request_Configuration" method="GET" path="#['/customers/$(vars.customerId)']">
+                <http:headers>#[{"Accept":"application/json"}]</http:headers>
+            </http:request>
+        </munit:execution>
+        <munit:validation>
+            <munit-tools:assert-that expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message="The HTTP Status code is not correct!" doc:name="Assert That Status Code is 200" />
+            <munit-tools:assert-that expression="#[output application/json --- payload]" is="#[MunitTools::equalTo(read(MunitTools::getResourceAsString('scaffolder/response/get_200_customers_{customerid}_application_json.json'), 'application/json'))]" message="The response payload is not correct!" doc:name="Assert That - Payload is Expected" />
+        </munit:validation>
+    </munit:test>
+    <munit:test name="get:\customers\(customerId):customer-api-config-404-application\json-FlowTest" description="Verifying functionality of [get:\customers\(customerId):customer-api-config-404-application\json]">
+        <munit:enable-flow-sources>
+            <munit:enable-flow-source value="customer-api-main" />
+            <munit:enable-flow-source value="get:\customers\(customerId):customer-api-config" />
+        </munit:enable-flow-sources>
+        <munit:behavior>
+            <set-variable variableName="customerId" value="#['1234']" doc:name="customerId" />
+        </munit:behavior>
+        <munit:execution>
+            <http:request config-ref="HTTP_Request_Configuration" method="GET" path="#['/customers/$(vars.customerId)']">
+                <http:headers>#[{"Accept":"application/json"}]</http:headers>
+                <http:response-validator>
+                    <http:success-status-code-validator values="404" />
+                </http:response-validator>
+            </http:request>
+        </munit:execution>
+        <munit:validation>
+            <munit-tools:assert-that expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(404)]" message="The HTTP Status code is not correct!" doc:name="Assert That Status Code is 404" />
+        </munit:validation>
+    </munit:test>
+    <munit:test name="post:\customers:application\json:customer-api-config-201-application\json-FlowTest" description="Verifying functionality of [post:\customers:application\json:customer-api-config-201-application\json]">
+        <munit:enable-flow-sources>
+            <munit:enable-flow-source value="customer-api-main" />
+            <munit:enable-flow-source value="post:\customers:application\json:customer-api-config" />
+        </munit:enable-flow-sources>
+        <munit:behavior>
+            <set-payload value="#[%dw 2.0&#10;output application/json&#10;---&#10;read(MunitTools::getResourceAsString('scaffolder/request/post_customers_application_json.json'),'application/json')]" />
+			<munit-tools:mock-when doc:name="Create Customer in Salesforce" doc:id="52fdb835-1589-4480-8838-3167e7901065" processor="salesforce:create">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="Create Customer" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="d11786d5-b810-40f9-9298-b86f43f15b9c" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value="#[[]]" mediaType="application/java" encoding="UTF-8" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+			<munit-tools:mock-when doc:name="Create Customer in Cosmos DB" doc:id="947f34f1-7ab0-49c1-91b9-ac0b5a9e7001" processor="azure-cosmos-db-connector-mule-4:create-document">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="Create Customer" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="a7e34b4b-9371-47b1-9a65-74f9a4a1a839" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value="#[[]]" mediaType="application/java" encoding="UTF-8" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+        </munit:behavior>
+        <munit:execution>
+            <http:request config-ref="HTTP_Request_Configuration" method="POST" path="/customers">
+                <http:headers>#[{"Accept":"application/json","Content-Type":"application/json"}]</http:headers>
+                <http:query-params>#[{"client_secret":"","client_id":""}]</http:query-params>
+            </http:request>
+        </munit:execution>
+        <munit:validation>
+            <munit-tools:assert-that expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(201)]" message="The HTTP Status code is not correct!" doc:name="Assert That Status Code is 201" />
+            <munit-tools:assert-that expression="#[output application/json --- payload]" is="#[MunitTools::equalTo(read(MunitTools::getResourceAsString('scaffolder/response/post_201_customers_application_json.json'),'application/json'))]" message="The response payload is not correct!" doc:name="Assert That - Payload is Expected" />
+        </munit:validation>
+    </munit:test>
+    <munit:test name="post:\customers:application\json:customer-api-config-400-application\json-FlowTest" description="Verifying functionality of [post:\customers:application\json:customer-api-config-400-application\json]">
+        <munit:enable-flow-sources>
+            <munit:enable-flow-source value="customer-api-main" />
+            <munit:enable-flow-source value="post:\customers:application\json:customer-api-config" />
+        </munit:enable-flow-sources>
+        <munit:behavior>
+            <set-payload value="#[%dw 2.0&#10;output application/json&#10;---&#10;read(MunitTools::getResourceAsString('scaffolder/request/post_customers_400_application_json.json'),'application/json')]" />
+        </munit:behavior>
+        <munit:execution>
+            <http:request config-ref="HTTP_Request_Configuration" method="POST" path="/customers">
+                <http:headers>#[{"Accept":"application/json","Content-Type":"application/json"}]</http:headers>
+                <http:query-params>#[{"client_secret":"","client_id":""}]</http:query-params>
+                <http:response-validator>
+                    <http:success-status-code-validator values="400" />
+                </http:response-validator>
+            </http:request>
+        </munit:execution>
+        <munit:validation>
+            <munit-tools:assert-that expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(400)]" message="The HTTP Status code is not correct!" doc:name="Assert That Status Code is 400" />
+        </munit:validation>
+    </munit:test>
+    <munit:test name="patch:\customers\(customerId):application\json:customer-api-config-200-application\json-FlowTest" description="Verifying functionality of [patch:\customers\(customerId):application\json:customer-api-config-200-application\json]">
+        <munit:enable-flow-sources>
+            <munit:enable-flow-source value="customer-api-main" />
+            <munit:enable-flow-source value="patch:\customers\(customerId):application\json:customer-api-config" />
+        </munit:enable-flow-sources>
+        <munit:behavior>
+            <set-payload value="#[%dw 2.0&#10;output application/json&#10;---&#10;read(MunitTools::getResourceAsString('scaffolder/request/patch_customers_{customerid}_application_json.json'),'application/json')]" />
+            <set-variable variableName="customerId" value="#['4d4de7d6-7f5e-4778-9c70-babba6c25c55']" doc:name="customerId" />
+			<munit-tools:mock-when doc:name="Update Customerr in Salesforce" doc:id="f84a4c04-441e-4558-ad06-eb60348732c1" processor="salesforce:update">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="Update" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="a5986cad-5529-41c6-a2d3-e1d6b3766ca1" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value="#[[]]" mediaType="application/java" encoding="UTF-8" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+			<munit-tools:mock-when doc:name="Update Customer in Cosmos" doc:id="5178f552-89b7-4c15-8681-69c2511d60ca" processor="azure-cosmos-db-connector-mule-4:create-document">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="Update Customer" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="4fdf5e1c-4baf-4589-9d70-521aa4a5d39b" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value="#[[]]" mediaType="application/java" encoding="UTF-8" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+        </munit:behavior>
+        <munit:execution>
+            <http:request config-ref="HTTP_Request_Configuration" method="PATCH" path="#['/customers/$(vars.customerId)']">
+                <http:headers>#[{"Accept":"application/json","Content-Type":"application/json"}]</http:headers>
+            </http:request>
+        </munit:execution>
+        <munit:validation>
+            <munit-tools:assert-that expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(200)]" message="The HTTP Status code is not correct!" doc:name="Assert That Status Code is 200" />
+            <munit-tools:assert-that expression="#[output application/json --- payload]" is="#[MunitTools::equalTo(read(MunitTools::getResourceAsString('scaffolder/response/patch_200_customers_{customerid}_application_json.json'),'application/json'))]" message="The response payload is not correct!" doc:name="Assert That - Payload is Expected" />
+        </munit:validation>
+    </munit:test>
+    <munit:test name="patch:\customers\(customerId):application\json:customer-api-config-404-application\json-FlowTest" description="Verifying functionality of [patch:\customers\(customerId):application\json:customer-api-config-404-application\json]">
+        <munit:enable-flow-sources>
+            <munit:enable-flow-source value="customer-api-main" />
+            <munit:enable-flow-source value="patch:\customers\(customerId):application\json:customer-api-config" />
+        </munit:enable-flow-sources>
+        <munit:behavior>
+            <set-payload value="#[%dw 2.0&#10;output application/json&#10;---&#10;read(MunitTools::getResourceAsString('scaffolder/request/patch_customers_{customerid}_application_json.json'),'application/json')]" />
+            <set-variable variableName="customerId" value="#['1234']" doc:name="customerId" />
+			<munit-tools:mock-when doc:name="Update Customer in SF" doc:id="c24ee65c-61d8-48df-8b73-ac55f45d4cbc" processor="salesforce:update">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="Update" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="a5986cad-5529-41c6-a2d3-e1d6b3766ca1" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:error typeId="ANY:NOT_FOUND" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+			<munit-tools:mock-when doc:name="Update Customer in Cosmos" doc:id="d034b67e-b3ea-4a15-bdd5-8db5e57b3705" processor="azure-cosmos-db-connector-mule-4:create-document">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="Update Customer" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="4fdf5e1c-4baf-4589-9d70-521aa4a5d39b" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:error typeId="ANY:NOT_FOUND" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+        </munit:behavior>
+        <munit:execution>
+            <http:request config-ref="HTTP_Request_Configuration" method="PATCH" path="#['/customers/$(vars.customerId)']">
+                <http:headers>#[{"Accept":"application/json","Content-Type":"application/json"}]</http:headers>
+                <http:response-validator>
+                    <http:success-status-code-validator values="404" />
+                </http:response-validator>
+            </http:request>
+        </munit:execution>
+        <munit:validation>
+            <munit-tools:assert-that expression="#[attributes.statusCode]" is="#[MunitTools::equalTo(404)]" message="The HTTP Status code is not correct!" doc:name="Assert That Status Code is 404" />
+        </munit:validation>
+    </munit:test>
+</mule>

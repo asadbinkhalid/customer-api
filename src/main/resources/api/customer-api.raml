@@ -1,0 +1,71 @@
+#%RAML 1.0
+title: customer-api
+
+traits:
+  authenticated: !include traits/authentication.raml
+
+types:
+  customerBase: !include types/models/customerBase.raml
+  customer: !include types/models/customer.raml
+  customerAllOptional: !include types/models/customerAllOptional.raml
+  error: !include types/error.raml
+
+/customers:
+  is: [authenticated]
+  post:
+    displayName: Create Customer
+    body:
+      application/json:
+        type: customerBase
+    responses:
+      201:
+        description: Successfully created
+        body:
+          application/json:
+            type: customer
+            examples: !include examples/customer.raml
+      400:
+        description: Error in request
+        body:
+          application/json:
+            type: error
+            examples: !include examples/badRequest.raml
+  /{customerId}:
+    uriParameters:
+      customerId:
+        type: string
+        minLength: 1
+        example: 4d4de7d6-7f5e-4778-9c70-babba6c25c55
+    get:
+      displayName: Get Customer By ID
+      responses:
+        200:
+          body:
+            application/json:
+              type: customer
+              examples: !include examples/customer.raml
+        404:
+          body:
+            application/json:
+              type: error
+              examples: !include examples/notFound.raml
+    patch:
+      displayName: Update Customer By ID
+      body:
+        application/json:
+          type: customerAllOptional
+      responses:
+        200:
+          body:
+            application/json:
+              type: customer
+              examples: !include examples/customer.raml
+        404:
+          body:
+            application/json:
+              type: error
+              examples: !include examples/notFound.raml
+
+          
+    
+

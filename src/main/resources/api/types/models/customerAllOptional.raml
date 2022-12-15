@@ -1,0 +1,67 @@
+#%RAML 1.0 DataType
+type: object
+
+displayName: Customer All Optional
+description: Customer All Optional Object
+minProperties: 1
+
+properties:
+  personalInformation?:
+    type: object
+    minProperties: 1
+    properties:
+      firstName?:
+        description: First Name
+        type: string
+        minLength: 1
+        example: Ulrich
+      lastName?:
+        description: Last Name
+        type: string
+        minLength: 1
+        example: Nielsen
+      companyName?:
+        description: Company Name
+        type: string
+        minLength: 1
+        example: E-ffoc
+      email?:
+        description: Email Address
+        type: string
+        pattern: ^.+@.+\..+$
+        example: ulrichN@effoc.com
+      phone?:
+        description: Company Name
+        type: string
+        minLength: 1
+        example: '+494341927420'
+  address?:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      minProperties: 1
+      properties:
+        street?:
+          description: Street Name
+          type: string
+          minLength: 1
+          example: Steinbrueckstrasse
+        houseNumber?:
+          description: House Number
+          type: integer
+          example: 114
+        city?:
+          description: City Name
+          type: string
+          minLength: 1
+          example: Nuremberg
+        country?:
+          description: Country Name
+          type: string
+          minLength: 1
+          example: Germany
+        postalCode?:
+          description: Postal Code
+          type: integer
+          example: 90408

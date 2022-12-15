@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:azure-cosmos-db-connector-mule-4="http://www.mulesoft.org/schema/mule/azure-cosmos-db-connector-mule-4"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/azure-cosmos-db-connector-mule-4 http://www.mulesoft.org/schema/mule/azure-cosmos-db-connector-mule-4/current/mule-azure-cosmos-db-connector-mule-4.xsd">
+	<http:listener-config name="customer-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="customer-api-config" api="customer-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="9cb551ff-5599-4afc-b787-441639587351" >
+		<salesforce:basic-connection username="FuankCRMUsername" password="FuankCRMPassword" securityToken="FuankCRMSecurityToken" />
+	</salesforce:sfdc-config>
+	<azure-cosmos-db-connector-mule-4:key-token-config name="Azure_Cosmos_Db_Key_Token_Config" doc:name="Azure Cosmos Db Key Token Config" doc:id="82cc7d8b-1b9c-44ee-8d14-164ee28123f3" >
+		<azure-cosmos-db-connector-mule-4:key-token-auth-connection baseUri="FuankCosmosDbAccountURL" key="FuankCosmosDbKeyToken" version="FuankCosmosDbVersion" />
+	</azure-cosmos-db-connector-mule-4:key-token-config>
+
+</mule>

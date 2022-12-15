@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:azure-cosmos-db-connector-mule-4="http://www.mulesoft.org/schema/mule/azure-cosmos-db-connector-mule-4" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/azure-cosmos-db-connector-mule-4 http://www.mulesoft.org/schema/mule/azure-cosmos-db-connector-mule-4/current/mule-azure-cosmos-db-connector-mule-4.xsd">
+	<sub-flow name="get-customer-subflow" doc:id="8b68daef-83b8-4867-ac5e-0a8aa7f54078" >
+		<logger level="INFO" doc:name="Request Received" doc:id="98d3bae6-17b9-4ca2-a9fe-ff2dedbd6225" message='#["Request received to get customer details with customerId: " ++ vars.customerId as String]'/>
+		<scatter-gather doc:name="Scatter-Gather" doc:id="3a8e2ed7-6ff4-4d0e-8f14-53114582e0ea" >
+			<route >
+				<ee:transform doc:name="Set soql query and params" doc:id="e7a46f1e-86e2-442e-b355-d277ca9fb624">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	soqlQuery: "SELECT customerId, firstName, lastName, companyName, email, phone FROM Customer WHERE customerId = ':customerId'",
+	soqlParams: {
+		customerid: vars.customerId
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<salesforce:query doc:name="Get Customer" doc:id="44e57996-d0d6-4695-83ea-f42402511122" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query><![CDATA[#[payload.soqlQuery]]]></salesforce:salesforce-query>
+			<salesforce:parameters><![CDATA[#[payload.soqlParams]]]></salesforce:parameters>
+		</salesforce:query>
+			</route>
+			<route >
+				<azure-cosmos-db-connector-mule-4:get-document doc:name="Get Customer" doc:id="6d6ac2d8-fe6b-48c4-b2df-8a6e1bcb00ac" config-ref="Azure_Cosmos_Db_Key_Token_Config" dbIdUriParam="FuankCosmosDbId" collIdUriParam="CustomerCollectionId" docIdUriParam="Customer" xMsDocumentdbPartitionkeyHeader='#["customerId"]'/>
+			</route>
+		</scatter-gather>
+		<set-payload value="#[%dw 2.0&#10;output application/java&#10;---&#10;{&#10;	personalInformation: payload[0][0] default payload[1].personalInformation,&#10;	address: payload[1].address default []&#10;}]" doc:name="Set Payload" doc:id="d231a74f-6805-4ed7-9e41-acfb045ac676" />
+		<logger level="INFO" doc:name="Returning Response" doc:id="586907c9-7e9c-4b2d-b99c-b24492ae72d9" message='#["Record found for customer with customerId: " ++ vars.customerId as String ++ ". Returning response."]' />
+	</sub-flow>
+	<sub-flow name="create-customer-subflow" doc:id="1c2efbc0-8a21-4432-9a8f-0ad694baa9d8" >
+		<logger level="INFO" doc:name="Request Received" doc:id="52d38819-85b4-469c-8744-f477b8fbbf9f" message="Request received to create a new customer."/>
+		<set-variable value="#[payload]" doc:name="Set requestObject" doc:id="9d2717a8-b155-4336-8485-10925c06fe11" variableName="requestObject" />
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;uuid() as String]" doc:name="Set customerId" doc:id="81c6a542-4710-4ef2-95da-b602a1a73c6b" variableName="customerId"/>
+		<try doc:name="Try" doc:id="2563a34c-0e42-4657-9a66-c7a199701576" transactionalAction="ALWAYS_BEGIN">
+			<scatter-gather doc:name="Scatter-Gather" doc:id="ae929218-031d-4aa7-8a59-e45e4f474b20" >
+				<route >
+					<ee:transform doc:name="Set records" doc:id="6dc31d2c-fc10-4342-be3e-4fa65ab00de5" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+[{
+	customerId: vars.customerId,
+	firstName: vars.requestObject.personalInformation.firstName,
+	lastName: vars.requestObject.personalInformation.lastName,
+	companyName: vars.requestObject.personalInformation.companyName,
+	email: vars.requestObject.personalInformation.email,
+	phone: vars.requestObject.personalInformation.phone
+}]]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<salesforce:create doc:name="Create Customer" doc:id="d11786d5-b810-40f9-9298-b86f43f15b9c" config-ref="Salesforce_Config" type="Customer"/>
+				</route>
+				<route >
+					<azure-cosmos-db-connector-mule-4:create-document doc:name="Create Customer" doc:id="a7e34b4b-9371-47b1-9a65-74f9a4a1a839" dbIdUriParam="FuankCosmosDbId" collIdUriParam="CustomerCollectionId" config-ref="Azure_Cosmos_Db_Key_Token_Config" xMsDocumentdbPartitionkeyHeader='#["customerId"]'>
+						<azure-cosmos-db-connector-mule-4:create-document-body ><![CDATA[#[vars.requestObject]]]></azure-cosmos-db-connector-mule-4:create-document-body>
+					</azure-cosmos-db-connector-mule-4:create-document>
+				</route>
+			</scatter-gather>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="62d2686b-32e2-41cd-8683-dddfa3af07ae" type="ANY">
+					<ee:transform doc:name="Set Error Response" doc:id="9fba9f13-531d-42e2-82d2-0e62b3a06f95" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	errorCode: error.errorMessage.attributes.statusCode default 500,
+  	errorMessage: error.detailedDescription default 'Internal Server Error',
+  	techincalDetails: 'There was was an error while creating a new customer record.' ++ write(error.errorMessage.payload, 'application/json')
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<logger level="INFO" doc:name="Error Occurred" doc:id="67640033-1956-4bc9-91c6-dbb178567641" message="#[write(payload, 'application/json')]"/>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<set-payload value="#[%dw 2.0&#10;output application/json&#10;---&#10;(vars.requestObject default {}) ++ {&#10;	customerId: vars.customerId&#10;}]" doc:name="Set Response Payload" doc:id="e240d8f6-4a8a-40b2-a31d-2529a74064c1" />
+		<logger level="INFO" doc:name="Record Created" doc:id="e6fe1bec-cc45-4ba0-82c0-c6a6e5cc2247" message='#["Successfully created a new customer with customerId: " ++ payload.customerId as String]'/>
+	</sub-flow>
+	<sub-flow name="update-customer-subflow" doc:id="5c829cca-0259-43f6-97cb-4c67e54daea0" >
+		<logger level="INFO" doc:name="Request Received" doc:id="4f07b0b7-17b1-4f23-9149-7cccf6450bc9" message='#["Request received to update customer with customerId: " ++ vars.customerId as String]'/>
+		<set-variable value="#[payload]" doc:name="Set requestObject" doc:id="1dfa3ba4-1fb9-4820-bfbc-c78a52d8d6b4" variableName="requestObject" />
+		<set-variable value="#[%dw 2.0&#10;output application/json&#10;---&#10;uuid() as String]" doc:name="Set customerId" doc:id="be62a84d-e70c-4546-ad46-a7598adbc733" variableName="customerId" />
+		<try doc:name="Try" doc:id="4e89e12a-847d-48d9-8e25-d2ae7fb824ea" transactionalAction="ALWAYS_BEGIN" >
+			<scatter-gather doc:name="Scatter-Gather" doc:id="160efa1a-48ee-4a47-8b74-e5e99b8d6fca" >
+				<route >
+					<ee:transform doc:name="Set records" doc:id="447ec3b2-1552-4d92-9ca9-cf675add3b32" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+[{
+	customerId: vars.customerId,
+	firstName: vars.requestObject.personalInformation.firstName,
+	lastName: vars.requestObject.personalInformation.lastName,
+	companyName: vars.requestObject.personalInformation.companyName,
+	email: vars.requestObject.personalInformation.email,
+	phone: vars.requestObject.personalInformation.phone
+}]]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<salesforce:update type="Customer" doc:name="Update" doc:id="a5986cad-5529-41c6-a2d3-e1d6b3766ca1" config-ref="Salesforce_Config">
+					</salesforce:update>
+				</route>
+				<route >
+					<azure-cosmos-db-connector-mule-4:create-document doc:name="Update Customer" doc:id="4fdf5e1c-4baf-4589-9d70-521aa4a5d39b" config-ref="Azure_Cosmos_Db_Key_Token_Config" dbIdUriParam="FuankCosmosDbId" collIdUriParam="CustomerCollectionId" xMsDocumentdbPartitionkeyHeader='#["customerId"]' xMsDocumentdbIsUpsertHeader="true">
+						<azure-cosmos-db-connector-mule-4:create-document-body ><![CDATA[#[vars.requestObject]]]></azure-cosmos-db-connector-mule-4:create-document-body>
+					</azure-cosmos-db-connector-mule-4:create-document>
+				</route>
+			</scatter-gather>
+			<error-handler >
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="8d4ef903-1263-4645-b857-c14008e0a3d9" type="ANY" >
+					<ee:transform doc:name="Set Error Response" doc:id="d58ad8fe-1e10-4e80-a7da-98b8a4afdb03" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	errorCode: error.errorMessage.attributes.statusCode default 500,
+  	errorMessage: error.detailedDescription default 'Internal Server Error',
+  	techincalDetails: 'There was was an error while creating a new customer record.' ++ write(error.errorMessage.payload, 'application/json')
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+					<logger level="INFO" doc:name="Error Occurred" doc:id="770b3b1d-94c4-4bbf-9fad-e2463a35d0e2" message="#[write(payload, 'application/json')]" />
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<set-payload value="#[%dw 2.0&#10;output application/json&#10;---&#10;(vars.requestObject default {}) ++ {&#10;	customerId: vars.customerId&#10;}]" doc:name="Set Response Payload" doc:id="22f4dcbd-0de1-474e-8f16-ee46312e7d9d" />
+		<logger level="INFO" doc:name="Request Received" doc:id="bf2d7616-5066-41bf-aab1-77a898f24c74" message='#["Successfully updated customer record with customerId: " ++ vars.customerId as String]' />
+	</sub-flow>
+</mule>
